@@ -31,16 +31,21 @@ def load_or_train_model():
     """Load existing model or train new one."""
     model = TutorRecommender()
 
-    if MODEL_PATH.exists():
+    tutors_path = Path(__file__).parent / "tutors.csv"
+    cases_path = Path(__file__).parent / "cases.csv"
+
+    # Check if ALL required files exist
+    if MODEL_PATH.exists() and tutors_path.exists() and cases_path.exists():
         model.load()
-        tutors = pd.read_csv(Path(__file__).parent / "tutors.csv")
-        cases = pd.read_csv(Path(__file__).parent / "cases.csv")
+        tutors = pd.read_csv(tutors_path)
+        cases = pd.read_csv(cases_path)
     else:
+        # Generate fresh data and train
         tutors, cases, results = generate_all_data()
         model.train(tutors, cases, results)
         model.save()
-        tutors.to_csv(Path(__file__).parent / "tutors.csv", index=False)
-        cases.to_csv(Path(__file__).parent / "cases.csv", index=False)
+        tutors.to_csv(tutors_path, index=False)
+        cases.to_csv(cases_path, index=False)
         results.to_csv(Path(__file__).parent / "results.csv", index=False)
 
     return model, tutors, cases
