@@ -98,7 +98,7 @@ def main():
     subject = st.sidebar.selectbox("Subject", SUBJECTS)
     level = st.sidebar.selectbox("Level", LEVELS)
 
-    budget = st.sidebar.slider("Budget (HKD/hour)", 100, 500, 200, step=25)
+    budget = st.sidebar.slider("Budget (HKD/hour)", 100, 500, 250, step=25)
 
     col1, col2 = st.sidebar.columns(2)
     with col1:
@@ -137,30 +137,62 @@ def main():
             st.warning("No tutors passed the filters. Try relaxing requirements.")
             return
 
+        # Summary stats
+        avg_prob = sum(r['probability'] for r in results) / len(results)
+        within_budget = sum(1 for r in results if r['features']['price_gap'] <= 0)
+
         st.header(f"Top {len(results)} Recommended Tutors")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Avg Success Rate", f"{avg_prob:.0%}")
+        with col2:
+            st.metric("Within Budget", f"{within_budget}/{len(results)}")
+        with col3:
+            st.metric("Best Match", f"{results[0]['probability']:.0%}")
+
+        st.markdown("---")
+
+        # Find best value (highest prob within budget)
+        within_budget_results = [r for r in results if r['features']['price_gap'] <= 0]
+        best_value_id = within_budget_results[0]['tutor_id'] if within_budget_results else None
 
         for i, result in enumerate(results):
             prob = result['probability']
             prob_color = "green" if prob > 0.6 else "orange" if prob > 0.4 else "red"
 
+            # Badges
+            badges = []
+            if i == 0:
+                badges.append("🏆 Best Match")
+            if result['tutor_id'] == best_value_id:
+                badges.append("💰 Best Value")
+            if result['features']['price_gap'] <= 0:
+                badges.append("✅ Within Budget")
+            badge_str = " | ".join(badges) if badges else ""
+
             with st.expander(
                 f"**#{i+1} {result['name']}** | "
                 f"Success: :{prob_color}[{prob:.0%}] | "
-                f"{'⚠️ ' + ', '.join(result['risk_tags']) if result['risk_tags'] else '✅ No risks'}"
+                f"{badge_str or ('⚠️ ' + ', '.join(result['risk_tags'][:2]) if result['risk_tags'] else '')}",
+                expanded=(i == 0)  # First one open by default
             ):
                 col1, col2 = st.columns([2, 1])
 
                 with col1:
-                    st.markdown(f"**Tutor ID:** {result['tutor_id']}")
-
                     tutor_data = result['tutor_data']
-                    st.markdown(f"**Subject:** {tutor_data.get('primary_subject', 'N/A')}")
-                    st.markdown(f"**Experience:** {tutor_data.get('experience_years', 0)} years")
-                    st.markdown(f"**Expected Rate:** HKD {tutor_data.get('expected_rate', 'N/A')}/hr")
-                    st.markdown(f"**District:** {tutor_data.get('district', 'N/A')}")
+
+                    # Rate comparison
+                    rate = tutor_data.get('expected_rate', 0)
+                    rate_diff = rate - budget
+                    rate_status = "✅ Within budget" if rate_diff <= 0 else f"⚠️ HKD {rate_diff} over budget"
+
+                    st.markdown(f"**Subject:** {tutor_data.get('primary_subject', 'N/A')} | **Experience:** {tutor_data.get('experience_years', 0)} years")
+                    st.markdown(f"**Rate:** HKD {rate}/hr ({rate_status})")
+                    st.markdown(f"**District:** {tutor_data.get('district', 'N/A')} | **Distance:** {result['features']['distance_km']:.1f} km")
 
                     if tutor_data.get('bio'):
-                        st.markdown(f"**Bio:** {tutor_data['bio'][:200]}...")
+                        st.markdown(f"**Bio:** {tutor_data['bio']}")
 
                     # Why this tutor
                     st.markdown("---")

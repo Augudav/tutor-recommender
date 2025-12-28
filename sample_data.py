@@ -82,10 +82,11 @@ def generate_tutors(n=500):
         experience_years = random.randint(1, 15)
 
         # Expected rate based on experience and subject
-        base_rate = 150 + experience_years * 20
+        # Lower base to ensure many tutors fit within typical budgets (150-300)
+        base_rate = 120 + experience_years * 10
         if primary_subject in ["IELTS", "SAT", "IB Mathematics", "IB Economics"]:
-            base_rate *= 1.3
-        expected_rate = int(base_rate + random.randint(-30, 50))
+            base_rate *= 1.2
+        expected_rate = int(base_rate + random.randint(-40, 40))
 
         # Generate bio
         bio_template = random.choice(TUTOR_BIOS)
