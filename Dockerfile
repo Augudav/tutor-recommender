@@ -1,5 +1,10 @@
 FROM python:3.11-slim
 
+# Install system dependencies for LightGBM
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
@@ -11,9 +16,7 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY --chown=user . /app
 
-# Generate sample data and train model on startup
-RUN python model.py
-
 EXPOSE 7860
 
-CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0", "--server.headless=true"]
+# Generate data and train on startup, then run app
+CMD python model.py && streamlit run app.py --server.port=7860 --server.address=0.0.0.0 --server.headless=true
